@@ -3,12 +3,41 @@ plugins {
     id 'maven-publish'
     id "com.github.johnrengelman.shadow" version "8.1.1"
 }
+/*
+   A switch that can be used to enable/disable Baritone integration in the jar file.
+   If:
+      YES --- Baritone will be integrated into the jar file.
+      NO --- Baritone will not be integrated into the jar file.
+ */
+project.ext.withBaritone = WithBaritone.YES
+// Version under which BThack jar file will be created and customized
+project.ext.version = "1.3"
 
-version = project.mod_version
-group = project.maven_group
+version = project.ext.version + (project.ext.withBaritone == WithBaritone.YES ? "" : "-NoBaritone")
+group = "com.ferra13671"
+
+void includeBaritone() {
+    if (project.ext.withBaritone == WithBaritone.YES) {
+        dependencies {
+            modInclude "meteordevelopment:baritone:${project.baritone_version}-SNAPSHOT"
+            library "dev.babbaj:nether-pathfinder:${nether_pathfinder_version}"
+        }
+    } else {
+        dependencies {
+            //It is only needed so that gradle does not generate an error
+            // because of imports of non-existent classes
+            modCompileOnly "meteordevelopment:baritone:${project.baritone_version}-SNAPSHOT"
+        }
+    }
+}
+
+enum WithBaritone {
+    YES,
+    NO
+}
 
 base {
-    archivesName = project.archives_base_name
+    archivesName = "BThack-" + project.minecraft_version + "-fabric"
 }
 
 repositories {
@@ -17,6 +46,7 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+
     maven {
         name = "meteor-maven"
         url = "https://maven.meteordev.org/releases"
@@ -34,17 +64,14 @@ repositories {
         }
     }
     maven {
-        name = "vram"
-        url = "https://maven.vram.io//"
-    }
-    mavenCentral()
-    maven {
         name = 'babbaj-repo'
         url = 'https://babbaj.github.io/maven/'
     }
     maven {
         url = 'https://jitpack.io'
     }
+
+    mavenCentral()
 }
 
 configurations {
@@ -63,15 +90,17 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-    //Without this shit, weird stuff happens with running the client in the plugin creation environment.
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    library "com.github.Ferra13671:MegaEvents:1.0"
+    //Remove later???
+    modInclude "maven.modrinth:satin-api:${satin_version}"
 
-    //library "dev.babbaj:nether-pathfinder:${nether_pathfinder_version}"
+    library "com.github.Ferra13671:MegaEvents:1.2"
+    library "com.github.Ferra13671:SimpleLanguageSystem:1.1"
+    library "com.github.Ferra13671:GLTextureUtils:1.0.2"
+    library "com.github.Ferra13671:Java-DiscordRPC:1.0"
 
-    // Baritone (https://github.com/MeteorDevelopment/baritone)
-    //modInclude "meteordevelopment:baritone:${project.baritone_version}-SNAPSHOT"
+    includeBaritone()
 }
 
 loom {
@@ -91,7 +120,8 @@ processResources {
     filesMatching("fabric.mod.json") {
         expand "version": project.version,
                 "minecraft_version": project.minecraft_version,
-                "loader_version": project.loader_version
+                "loader_version": project.loader_version,
+                "bthack_version": project.ext.version
     }
 }
 
